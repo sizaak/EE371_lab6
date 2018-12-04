@@ -20,16 +20,22 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW,
 	logic [8:0] y;
 	logic [7:0] r, g, b;
 	
+	assign reset = SW[9];
+	
 	video_driver #(.WIDTH(640), .HEIGHT(480))
 		v1 (.CLOCK_50, .reset, .x, .y, .r, .g, .b,
 			 .VGA_R, .VGA_G, .VGA_B, .VGA_BLANK_N,
 			 .VGA_CLK, .VGA_HS, .VGA_SYNC_N, .VGA_VS);
+			 
+	gameDisplay game(.CLOCK_50, .reset, .posX(x), .posY(y), .r, .g, .b, .L(~KEY[1]), .R(~KEY[0]));
 	
-	always_ff @(posedge CLOCK_50) begin
-		r <= SW[7:0];
-		g <= x[7:0];
-		b <= y[7:0];
-	end
+	
+	//always_ff @(posedge CLOCK_50) begin
+	//	r <= SW[7:0];
+	//	g <= x[7:0];
+	//	b <= y[7:0];
+	//end
+	
 	
 	assign HEX0 = '1;
 	assign HEX1 = '1;
@@ -37,6 +43,5 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW,
 	assign HEX3 = '1;
 	assign HEX4 = '1;
 	assign HEX5 = '1;
-	assign reset = 0;
 	
 endmodule
