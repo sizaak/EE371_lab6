@@ -16,7 +16,7 @@ module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
 	logic paddleLeft, paddleRight;
 	logic [4:0] brickCrush;
 	logic [10:0] ballX, ballY;
-	logic signed [10:0] ball_xstep, ball_ystep, ball_xstep_reg, ball_ystep_reg;
+	logic signed [10:0] ball_xstep_prev, ball_ystep_prev, ball_xstep_next, ball_ystep_next;
 	logic [3:0] count;
 	logic [7:0] red, green, blue;
 	integer countX, countY;
@@ -112,33 +112,47 @@ module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
 		ballY <= 445;
 	end else begin
 	//	if(posY == 480) begin //when drawing is done, update ball position
-			ballX <= ballX + ball_xstep;
-			ballY <= ballY + ball_ystep;
+			ballX <= ballX + ball_xstep_prev;
+			ballY <= ballY + ball_ystep_prev;
 	//	end
 	end
  end
  
   always_comb begin
 	if(reset) begin
-		ball_xstep_reg = 11'b00000000001;
-		ball_ystep_reg = 11'b11111111111;
+		ball_xstep_next = 11'b00000000001;
+		ball_ystep_next = 11'b11111111111;
 	end else begin
-		ball_xstep_reg = ball_xstep;
-		ball_ystep_reg = ball_ystep;
-		if((ballX + radius) >= screenRightEdge) ball_xstep_reg = 11'b11111111111; // -1
-		else if((ballX - radius) <= screenLeftEdge) ball_xstep_reg = 11'b00000000001;
-		else if((ballY - radius) <= screenTop) ball_ystep_reg = 11'b00000000001;
-		else if((ballY + radius) >= screenTop) ball_ystep_reg = 11'b11111111111;
-		//else if((ballY + radius - 1) >= paddleYMin && ballX <= (paddleX+paddleWidth)
-		//			&& ballX >= (paddleX-paddleWidth)) ball_ystep_reg = 11'b11111111111;
+		if((ballX + radius) >= screenRightEdge) begin
+			ball_xstep_next = 11'b11111111111; // -1
+			ball_ystep_next = ball_ystep_prev;
+		end else if((ballX - radius) <= screenLeftEdge) begin
+			ball_xstep_next = 11'b00000000001;
+			ball_ystep_next = ball_ystep_prev;
+		end else if((ballY - radius) <= screenTop) begin
+			ball_xstep_next = ball_xstep_prev;
+			ball_ystep_next = 11'b00000000001;
+		end else if((ballY + radius) >= screenBottom) begin 
+			ball_xstep_next = ball_xstep_prev;
+			ball_ystep_next = 11'b11111111111;
+		end else if((ballY + radius) >= paddleYMin && ballX <= (paddleX+paddleWidth)
+					&& ballX >= (paddleX-paddleWidth)) begin
+						ball_xstep_next = ball_xstep_prev;
+						ball_ystep_next = 11'b11111111111;
+		end else begin
+			ball_xstep_next = ball_xstep_prev;
+			ball_ystep_next = ball_ystep_prev;	
+		end
 	end	
  end
  
  //assign gameOver = (ballY + radius) >= screenBottom;
  assign gameOver = 0;
- assign ball_xstep = ball_xstep_reg;
- assign ball_ystep = ball_ystep_reg;
  
+ always_ff @(posedge CLOCK_50) begin
+	ball_xstep_prev <= ball_xstep_next;
+	ball_ystep_prev <= ball_ystep_next;
+ end
  
  //---------------------Brick logics---------------------//
  
