@@ -10,13 +10,13 @@ module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
 	logic gameOver;
 	logic [4:0] brick;
 	logic borderLeft, borderRight, borderBottom, borderTop;
-	logic [4:0] brickOn, brickHit;
+	logic [4:0] brickOn;
 	logic paddle;
 	logic [10:0] paddleX; // center of the paddle
 	logic paddleLeft, paddleRight;
 	logic [4:0] brickCrush;
 	logic [10:0] ballX, ballY;
-	logic signed [1:0] ball_xstep, ball_ystep;
+	logic signed [10:0] ball_xstep, ball_ystep, ball_xstep_reg, ball_ystep_reg;
 	logic [3:0] count;
 	logic [7:0] red, green, blue;
 	integer countX, countY;
@@ -52,24 +52,22 @@ module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
 	assign brick[4] = (posX >= brickLeft5 && posX <= brickRight5 && posY >= rowMin1 && posY <= rowMax1);
 	assign paddle = (posX >= paddleX - paddleWidth && posX <= paddleX + paddleWidth 
 							&& posY >= paddleYMin && posY <= paddleYMax);
-	
+	assign ball = (posX >= ballX - radius && posX <= ballX + radius
+						&& posY >= ballY - radius && posY <= ballY + radius);
 	
 	
 	always_ff @(posedge CLOCK_50) begin
 		if(reset) begin
-			gameOver <= 1'b0;
-			brickOn <= 5'b11111;
-			brickHit <= 5'b00000;
 			red <= 0;
 			green <= 0;
 			blue <= 0;
 		end else begin
 			red[5] <= ((brickOn[0] && ~gameOver && brick[0]) || (brickOn[1] && ~gameOver && brick[1]) || 
 							(brickOn[2] && ~gameOver && brick[2]) || (brickOn[3] && ~gameOver && brick[3]) ||
-							(brickOn[4] && ~gameOver && brick[4])) || (ball && ~gameOver);
-			green[5] <= (paddle && ~gameOver) || (ball && ~gameOver);
+							(brickOn[4] && ~gameOver && brick[4]));
+			green[5] <= (paddle && ~gameOver);
 			blue[5] <= (ball && ~gameOver);
-			if(brickOn == 5'b00000) gameOver <= 0;
+			//if(brickOn == 5'b00000) gameOver <= 1;
 		end
 		
 	end
@@ -84,8 +82,10 @@ module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
 	
 	always_ff @(posedge clk[15]) begin
 		if(reset) paddleX <= 320;
-		else if (paddleLeft) paddleX <= paddleX - 1;
-		else if (paddleRight) paddleX <= paddleX + 1;
+		else begin
+			if (paddleLeft) paddleX <= paddleX - 1;
+			else if (paddleRight) paddleX <= paddleX + 1;
+		end
 	end
 	
 	
@@ -106,79 +106,69 @@ module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
  
  //---------------------Ball logics---------------------//
  
- 
- // Initially ball starts at center of (320, 475) with radius of 5
- always_ff @(posedge CLOCK_50) begin
+ always_ff @(posedge clk[19]) begin
 	if(reset) begin
 		ballX <= 320;
-		ballY <= 475;
-		countX <= 0;
-		countY <= radius;
+		ballY <= 445;
 	end else begin
-		if((posX == 640) && (posY == 480)) begin //when drawing is done, update ball position
+	//	if(posY == 480) begin //when drawing is done, update ball position
 			ballX <= ballX + ball_xstep;
 			ballY <= ballY + ball_ystep;
-			countX <= 0;
-			countY <= radius;
-		end else begin
-			if(posY < ballY && count >= 0) begin
-				if(posX == ballX + countX)
-					countY <= countY - 1;
-				else
-					countX <= countX + 1;
-			end else if(posY >= ballY && count <= 5) begin
-				if(posX == ballX + countX)
-					countY <= countY + 1;
-				else
-					countX <= countX - 1;
-			end
-			
-		end
+	//	end
 	end
  end
  
- assign ball = ((posX >= ballX - countX) && (posX < ballX + countX) 
-					&& (posY >= ballY - countY) && (posY <= ballY + countY));
- 
- always_comb begin
-	if((ballX - radius) == 0) begin
-		ball_xstep = 1;
-		ball_ystep = 0;
-	end else if((ballX + radius) == 640) begin 
-		ball_xstep = -1;
-		ball_ystep = 0;
-	end else if((ballY - radius) == 0) begin 
-		ball_xstep = 0;
-		ball_ystep = 1;
-	end else if((ballY + radius) >= paddleYMin && (ballX + radius) <= (paddleX + paddleWidth)
-				&& (ballX - radius) >= (paddleX - paddleWidth))  begin 
-		ball_xstep = 0;
-		ball_ystep = -1;
+  always_comb begin
+	if(reset) begin
+		ball_xstep_reg = 11'b00000000001;
+		ball_ystep_reg = 11'b11111111111;
 	end else begin
-		ball_xstep = 0;
-		ball_ystep = 0;
-	end
-	//else if((ballY + radius) == 480) gameOver = 1;
+		ball_xstep_reg = ball_xstep;
+		ball_ystep_reg = ball_ystep;
+		if((ballX + radius) >= screenRightEdge) ball_xstep_reg = 11'b11111111111; // -1
+		else if((ballX - radius) <= screenLeftEdge) ball_xstep_reg = 11'b00000000001;
+		else if((ballY - radius) <= screenTop) ball_ystep_reg = 11'b00000000001;
+		else if((ballY + radius) >= screenTop) ball_ystep_reg = 11'b11111111111;
+		//else if((ballY + radius - 1) >= paddleYMin && ballX <= (paddleX+paddleWidth)
+		//			&& ballX >= (paddleX-paddleWidth)) ball_ystep_reg = 11'b11111111111;
+	end	
  end
  
+ //assign gameOver = (ballY + radius) >= screenBottom;
+ assign gameOver = 0;
+ assign ball_xstep = ball_xstep_reg;
+ assign ball_ystep = ball_ystep_reg;
  
  
  //---------------------Brick logics---------------------//
  
- assign brickCrush[0] = ((ballY <= rowMax1) && ((ballX-count) > brickLeft1) && ((ballX + count) < brickRight1));
- assign brickCrush[1] = ((ballY <= rowMax1) && ((ballX-count) > brickLeft2) && ((ballX + count) < brickRight2));
- assign brickCrush[2] = ((ballY <= rowMax1) && ((ballX-count) > brickLeft3) && ((ballX + count) < brickRight3));
- assign brickCrush[3] = ((ballY <= rowMax1) && ((ballX-count) > brickLeft4) && ((ballX + count) < brickRight4));
- assign brickCrush[4] = ((ballY <= rowMax1) && ((ballX-count) > brickLeft5) && ((ballX + count) < brickRight5));
  /*
+ assign brickCrush[0] = ((ballY <= rowMax1) && ((ballX-radius) >= brickLeft1) && ((ballX + radius) <= brickRight1));
+ assign brickCrush[1] = ((ballY <= rowMax1) && ((ballX-radius) >= brickLeft2) && ((ballX + radius) <= brickRight2));
+ assign brickCrush[2] = ((ballY <= rowMax1) && ((ballX-radius) >= brickLeft3) && ((ballX + radius) <= brickRight3));
+ assign brickCrush[3] = ((ballY <= rowMax1) && ((ballX-radius) >= brickLeft4) && ((ballX + radius) <= brickRight4));
+ assign brickCrush[4] = ((ballY <= rowMax1) && ((ballX-radius) >= brickLeft5) && ((ballX + radius) <= brickRight5));
+*/
+ assign brickCrush[0] = ball && brick[0];
+ assign brickCrush[1] = ball && brick[1];
+ assign brickCrush[2] = ball && brick[2];
+ assign brickCrush[3] = ball && brick[3];
+ assign brickCrush[4] = ball && brick[4];
+
+ logic [4:0] brickOn_reg;
  always_comb begin
-	if(brickCrush[0]) brickOn[0] = 0;
-	else if(brickCrush[1]) brickOn[1] = 0;
-	else if(brickCrush[2]) brickOn[2] = 0;
-	else if(brickCrush[3]) brickOn[3] = 0;
-	else if(brickCrush[4]) brickOn[4] = 0;
+	if(reset) brickOn_reg = 5'b11111;
+	else begin
+		brickOn_reg = brickOn;
+		if(brickCrush[0]) brickOn_reg[0] = 0;
+		else if(brickCrush[1]) brickOn_reg[1] = 0;
+		else if(brickCrush[2]) brickOn_reg[2] = 0;
+		else if(brickCrush[3]) brickOn_reg[3] = 0;
+		else if(brickCrush[4]) brickOn_reg[4] = 0;
+	end
  end
- */
+
+ assign brickOn = brickOn_reg;
 
 endmodule
 
