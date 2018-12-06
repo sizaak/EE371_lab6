@@ -1,12 +1,13 @@
-module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
+module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R, s, done);
 	
 	input logic CLOCK_50, reset;
 	input logic [9:0] posX;
 	input logic [8:0] posY;
-	input logic L, R;
+	input logic L, R, s;
     
 	output logic [7:0] r, g, b;
-
+	output logic done;
+	
 	logic gameOver;
 	logic [4:0] brick;
 	logic borderLeft, borderRight, borderBottom, borderTop;
@@ -54,7 +55,7 @@ module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
 							&& posY >= paddleYMin && posY <= paddleYMax);
 	assign ball = (posX >= ballX - radius && posX <= ballX + radius
 						&& posY >= ballY - radius && posY <= ballY + radius);
-	
+	assign done = gameOver;
 	
 	always_ff @(posedge CLOCK_50) begin
 		if(reset) begin
@@ -67,7 +68,6 @@ module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
 							(brickOn[4] && ~gameOver && brick[4]));
 			green[5] <= (paddle && ~gameOver);
 			blue[5] <= (ball && ~gameOver);
-			//if(brickOn == 5'b00000) gameOver <= 1;
 		end
 		
 	end
@@ -83,8 +83,9 @@ module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
 	always_ff @(posedge clk[15]) begin
 		if(reset) paddleX <= 320;
 		else begin
-			if (paddleLeft) paddleX <= paddleX - 1;
-			else if (paddleRight) paddleX <= paddleX + 1;
+			if (paddleLeft && s) paddleX <= paddleX - 1;
+			else if (paddleRight && s) paddleX <= paddleX + 1;
+			
 		end
 	end
 	
@@ -110,12 +111,15 @@ module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
 	if(reset) begin
 		ballX <= 320;
 		ballY <= 445;
+		gameOver <= 1'b0;
 	end else begin
-	//	if(posY == 480) begin //when drawing is done, update ball position
+		if(s) begin
 			ballX <= ballX + ball_xstep_prev;
 			ballY <= ballY + ball_ystep_prev;
-	//	end
+		end
 	end
+	
+	if(gameOver_reg) gameOver <= 1'b1;
  end
  
   always_comb begin
@@ -123,18 +127,22 @@ module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
 		ball_xstep_next = 11'b00000000001;
 		ball_ystep_next = 11'b11111111111;
 	end else begin
-		if((ballX + radius) >= screenRightEdge) begin
+		if((ballX + radius) >= screenRightEdge || (brickCrush[1] && (ballX+radius) <= brickLeft2)  
+			|| (brickCrush[2] && (ballX+radius) <= brickLeft3) || (brickCrush[3] && (ballX+radius) <= brickLeft4)
+			|| (brickCrush[4] && (ballX+radius) <= brickLeft5)) begin
 			ball_xstep_next = 11'b11111111111; // -1
 			ball_ystep_next = ball_ystep_prev;
-		end else if((ballX - radius) <= screenLeftEdge) begin
+		end else if((ballX - radius) <= screenLeftEdge || (brickCrush[0] && (ballX-radius) <= brickRight1)
+						|| (brickCrush[1] && (ballX-radius) <= brickRight2) || (brickCrush[2] && (ballX-radius) <= brickRight3)
+						|| (brickCrush[3] && (ballX-radius) <= brickRight4)) begin
 			ball_xstep_next = 11'b00000000001;
 			ball_ystep_next = ball_ystep_prev;
-		end else if((ballY - radius) <= screenTop) begin
+		end else if((ballY - radius) <= screenTop || ((brickCrush != 0) && (ballY-radius) <= rowMax1)) begin
 			ball_xstep_next = ball_xstep_prev;
 			ball_ystep_next = 11'b00000000001;
-		end else if((ballY + radius) >= screenBottom) begin 
-			ball_xstep_next = ball_xstep_prev;
-			ball_ystep_next = 11'b11111111111;
+		//end else if((ballY + radius) >= screenBottom) begin 
+		//	ball_xstep_next = ball_xstep_prev;
+		//	ball_ystep_next = 11'b11111111111;
 		end else if((ballY + radius) >= paddleYMin && ballX <= (paddleX+paddleWidth)
 					&& ballX >= (paddleX-paddleWidth)) begin
 						ball_xstep_next = ball_xstep_prev;
@@ -146,8 +154,11 @@ module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
 	end	
  end
  
- //assign gameOver = (ballY + radius) >= screenBottom;
- assign gameOver = 0;
+ logic gameOver_reg;
+ 
+ assign gameOver_reg = (ballY + radius) >= screenBottom || (brickOn == 5'b00000);
+ 
+ //assign gameOver = 0;
  
  always_ff @(posedge CLOCK_50) begin
 	ball_xstep_prev <= ball_xstep_next;
@@ -156,13 +167,6 @@ module gameDisplay(CLOCK_50, reset, posX, posY, r, g, b, L, R);
  
  //---------------------Brick logics---------------------//
  
- /*
- assign brickCrush[0] = ((ballY <= rowMax1) && ((ballX-radius) >= brickLeft1) && ((ballX + radius) <= brickRight1));
- assign brickCrush[1] = ((ballY <= rowMax1) && ((ballX-radius) >= brickLeft2) && ((ballX + radius) <= brickRight2));
- assign brickCrush[2] = ((ballY <= rowMax1) && ((ballX-radius) >= brickLeft3) && ((ballX + radius) <= brickRight3));
- assign brickCrush[3] = ((ballY <= rowMax1) && ((ballX-radius) >= brickLeft4) && ((ballX + radius) <= brickRight4));
- assign brickCrush[4] = ((ballY <= rowMax1) && ((ballX-radius) >= brickLeft5) && ((ballX + radius) <= brickRight5));
-*/
  assign brickCrush[0] = ball && brick[0];
  assign brickCrush[1] = ball && brick[1];
  assign brickCrush[2] = ball && brick[2];

@@ -1,0 +1,49 @@
+module gameDisplay(CLOCK_50, reset, posX, posY, VGA_R, VGA_G, VGA_B);
+	
+	input logic CLOCK_50, reset;
+   input logic [10:0] posX, posY;    
+    
+   output logic [7:0] VGA_R, VGA_G, VGA_B;
+
+	logic gameOver;
+	logic [4:0] brick;
+	logic borderLeft, borderRight, borderBottom, borderTop;
+	
+	parameter brickLeft1 = 0, brickRight1 = 127;
+	parameter brickLeft2 = 128, brickRight2 = 255;
+	parameter brickLeft3 = 256, brickRight3 = 383;
+	parameter brickLeft4 = 384, brickRight4 = 512;
+	parameter brickLeft5 = 513, brickRight5 = 640;
+	
+	parameter rowMin1 = 60, rowMax1 = 100;
+	
+	//4 borders
+   assign borderLeft = (posX == 0);
+	assign borderRight = (posX == 640);
+	assign borderBottom = (posY == 480);
+	assign borderTop = (posY == 0);
+
+	// Brick logics
+	// 5 X 3 bricks : 640 X 480 pixels
+	assign brick[0] = (posX >= brickLeft1 && posx <= brickRight1 && posY >= rowMin1 && posY <= rowMax1);
+	assign brick[1] = (posX >= brickLeft2 && posx <= brickRight2 && posY >= rowMin1 && posY <= rowMax1);
+   assign brick[2] = (posX >= brickLeft3 && posx <= brickRight3 && posY >= rowMin1 && posY <= rowMax1);
+	assign brick[3] = (posX >= brickLeft4 && posx <= brickRight4 && posY >= rowMin1 && posY <= rowMax1);
+	assign brick[4] = (posX >= brickLeft5 && posx <= brickRight5 && posY >= rowMin1 && posY <= rowMax1);
+ 
+	always_ff @(posedge CLOCK_50) begin
+		if(reset) begin
+			gameOver <= 1'b0;
+			
+		end else begin
+		
+		end
+	end
+ 
+ // Ball logics
+ 
+ 
+ // Paddle logics
+ 
+
+endmodule
