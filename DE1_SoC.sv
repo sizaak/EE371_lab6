@@ -33,7 +33,7 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0,
 	logic [9:0] x;
 	logic [8:0] y;
 	logic [7:0] r, g, b;
-	logic done;
+	logic done, victory;
 	
 	inout PS2_CLK, PS2_DAT;
 	wire button_left, button_right, button_middle;
@@ -46,7 +46,7 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0,
 			 .VGA_R, .VGA_G, .VGA_B, .VGA_BLANK_N,
 			 .VGA_CLK, .VGA_HS, .VGA_SYNC_N, .VGA_VS);
 			 
-	gameDisplay game(.CLOCK_50, .reset, .posX(x), .posY(y), .r, .g, .b, .L(button_left), .R(button_right), .s(SW[8]), .done);
+	gameDisplay game(.CLOCK_50, .reset, .posX(x), .posY(y), .r, .g, .b, .L(button_left), .R(button_right), .s(SW[8]), .done, .victory);
 	
 	
 	ps2 #(.WIDTH(10), .HEIGHT(10), .BIN(10), .HYSTERESIS(3))
@@ -57,7 +57,8 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0,
 	
 	assign LEDR[9] = button_left;
 	assign LEDR[0] = button_right;
-	assign GPIO_0[0] = done; // pin for green LED = b
+	assign GPIO_0[0] = done; // pin for red defeat LED
+	assign GPIO_0[1] = victory; // pin for green victory LED
 	
 	part1 (.CLOCK_50, .CLOCK2_50, .KEY(KEY[0]), .FPGA_I2C_SCLK, .FPGA_I2C_SDAT, .AUD_XCK, 
 		        .AUD_DACLRCK, .AUD_ADCLRCK, .AUD_BCLK, .AUD_ADCDAT, .AUD_DACDAT);
