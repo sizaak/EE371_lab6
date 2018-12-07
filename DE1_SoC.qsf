@@ -668,6 +668,13 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to VGA_R[6]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to VGA_R[7]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to VGA_SYNC_N
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to VGA_VS
+set_global_assignment -name SOURCE_FILE CLOCK25_PLL.cmp
+set_global_assignment -name SDC_FILE DE1_SoC_golden_top.sdc
+set_global_assignment -name SYSTEMVERILOG_FILE reg_file.sv
+set_global_assignment -name SYSTEMVERILOG_FILE fifo_ctrl.sv
+set_global_assignment -name SYSTEMVERILOG_FILE fifo.sv
+set_global_assignment -name VERILOG_FILE DE1_SOC_golden_top.v
+set_global_assignment -name SYSTEMVERILOG_FILE N_fir.sv
 set_global_assignment -name VERILOG_FILE clock_generator.v
 set_global_assignment -name VERILOG_FILE audio_codec.v
 set_global_assignment -name VERILOG_FILE audio_and_video_config.v

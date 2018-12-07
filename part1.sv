@@ -19,11 +19,12 @@ module part1 (CLOCK_50, CLOCK2_50, KEY, FPGA_I2C_SCLK, FPGA_I2C_SDAT, AUD_XCK,
 	wire [23:0] noise;
 	
 	assign reset = ~KEY[0];
-	
-	assign writedata_left = readdata_left;
-	assign writedata_right = readdata_right;
+
 	assign read = read_ready && write_ready;
 	assign write = read_ready && write_ready;
+	
+	 N_fir #(.N(16)) n_l (.reset, .CLOCK_50, .data_in(readdata_left), .data_out(writedata_left), .read);
+	 N_fir #(.N(16)) n_r (.reset, .CLOCK_50, .data_in(readdata_right), .data_out(writedata_right), .read);
 	
 	
 /////////////////////////////////////////////////////////////////////////////////
